@@ -1,13 +1,13 @@
 -- +goose Up
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-CREATE TABLE workspaces (
+CREATE TABLE IF NOT EXISTS workspaces (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   email text NOT NULL UNIQUE,
   username text NOT NULL UNIQUE,
@@ -17,7 +17,7 @@ CREATE TABLE users (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE workspace_members (
+CREATE TABLE IF NOT EXISTS workspace_members (
   workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   role text NOT NULL CHECK (role IN ('admin', 'member')),
@@ -25,7 +25,7 @@ CREATE TABLE workspace_members (
   PRIMARY KEY (workspace_id, user_id)
 );
 
-CREATE TABLE projects (
+CREATE TABLE IF NOT EXISTS projects (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
   key text NOT NULL,
@@ -37,7 +37,7 @@ CREATE TABLE projects (
   UNIQUE (workspace_id, key)
 );
 
-CREATE TABLE issues (
+CREATE TABLE IF NOT EXISTS issues (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   number integer NOT NULL,
@@ -55,7 +55,7 @@ CREATE TABLE issues (
   UNIQUE (project_id, number)
 );
 
-CREATE TABLE labels (
+CREATE TABLE IF NOT EXISTS labels (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
   name text NOT NULL,
@@ -63,13 +63,13 @@ CREATE TABLE labels (
   UNIQUE (workspace_id, name)
 );
 
-CREATE TABLE issue_labels (
+CREATE TABLE IF NOT EXISTS issue_labels (
   issue_id uuid NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
   label_id uuid NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
   PRIMARY KEY (issue_id, label_id)
 );
 
-CREATE TABLE comments (
+CREATE TABLE IF NOT EXISTS comments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   issue_id uuid NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
   author_id uuid NOT NULL REFERENCES users(id),
@@ -78,7 +78,7 @@ CREATE TABLE comments (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE sessions (
+CREATE TABLE IF NOT EXISTS sessions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   token_hash text NOT NULL UNIQUE,
@@ -86,7 +86,7 @@ CREATE TABLE sessions (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE activity_log (
+CREATE TABLE IF NOT EXISTS activity_log (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   entity_type text NOT NULL,
   entity_id uuid NOT NULL,
@@ -96,16 +96,16 @@ CREATE TABLE activity_log (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_workspace_members_user_id ON workspace_members(user_id);
-CREATE INDEX idx_projects_workspace_id ON projects(workspace_id);
-CREATE INDEX idx_issues_project_id ON issues(project_id);
-CREATE INDEX idx_issues_status ON issues(status);
-CREATE INDEX idx_issues_assignee_id ON issues(assignee_id);
-CREATE INDEX idx_issues_priority ON issues(priority);
-CREATE INDEX idx_comments_issue_id ON comments(issue_id);
-CREATE INDEX idx_sessions_user_id ON sessions(user_id);
-CREATE INDEX idx_sessions_expires_at ON sessions(expires_at);
-CREATE INDEX idx_activity_log_entity ON activity_log(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_workspace_members_user_id ON workspace_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_projects_workspace_id ON projects(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_issues_project_id ON issues(project_id);
+CREATE INDEX IF NOT EXISTS idx_issues_status ON issues(status);
+CREATE INDEX IF NOT EXISTS idx_issues_assignee_id ON issues(assignee_id);
+CREATE INDEX IF NOT EXISTS idx_issues_priority ON issues(priority);
+CREATE INDEX IF NOT EXISTS idx_comments_issue_id ON comments(issue_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_activity_log_entity ON activity_log(entity_type, entity_id);
 
 -- +goose Down
 DROP TABLE IF EXISTS activity_log;

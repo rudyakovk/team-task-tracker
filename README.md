@@ -26,6 +26,9 @@ make dev
 make down
 make logs
 make db-up
+make migrate-up
+make seed
+make setup-db
 make backend-dev
 make backend-test
 ```
@@ -47,8 +50,17 @@ make frontend-dev
 Для локального запуска backend без полного Docker stack:
 
 ```sh
-make db-up
+make setup-db
 make backend-dev
+```
+
+Локальный seed создает:
+
+```text
+workspace: Local Workspace
+email: admin@example.com
+username: admin
+password: admin12345
 ```
 
 ## Environment
