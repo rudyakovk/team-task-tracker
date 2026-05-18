@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"team-task-tracker/backend/internal/config"
+	"team-task-tracker/backend/internal/database"
 )
 
 func main() {
@@ -19,9 +20,21 @@ func main() {
 		Level: slog.LevelInfo,
 	}))
 
+	dbCtx, dbCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer dbCancel()
+
+	db, err := database.Connect(dbCtx, cfg.DatabaseURL)
+	if err != nil {
+		logger.Error("database connection failed", "error", err)
+		os.Exit(1)
+	}
+	defer db.Close()
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", healthHandler)
 	mux.HandleFunc("GET /api/v1/health", healthHandler)
+	mux.HandleFunc("GET /readyz", readinessHandler(db))
+	mux.HandleFunc("GET /api/v1/ready", readinessHandler(db))
 
 	server := &http.Server{
 		Addr:         ":" + cfg.Port,
@@ -63,6 +76,26 @@ func healthHandler(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(`{"status":"ok"}`))
+}
+
+func readinessHandler(db interface {
+	Ping(context.Context) error
+}) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+
+		if err := db.Ping(ctx); err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte(`{"status":"unavailable","database":"down"}`))
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"ok","database":"up"}`))
+	}
 }
 
 func requestLogger(logger *slog.Logger, next http.Handler) http.Handler {

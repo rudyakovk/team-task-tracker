@@ -25,7 +25,16 @@
 make dev
 make down
 make logs
+make db-up
+make backend-dev
 make backend-test
+```
+
+Backend health:
+
+```sh
+curl http://localhost:8080/healthz
+curl http://localhost:8080/readyz
 ```
 
 Для локального запуска frontend без Docker:
@@ -33,6 +42,13 @@ make backend-test
 ```sh
 make frontend-install
 make frontend-dev
+```
+
+Для локального запуска backend без полного Docker stack:
+
+```sh
+make db-up
+make backend-dev
 ```
 
 ## Environment
