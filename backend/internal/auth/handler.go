@@ -20,6 +20,7 @@ import (
 const SessionCookieName = "team_task_tracker_session"
 
 var errInvalidCredentials = errors.New("invalid credentials")
+var ErrUnauthorized = errors.New("unauthorized")
 
 type Handler struct {
 	db         *pgxpool.Pool
@@ -65,6 +66,15 @@ type workspaceResponse struct {
 	Role string `json:"role"`
 }
 
+type CurrentUser struct {
+	ID          string
+	Email       string
+	Username    string
+	DisplayName string
+	WorkspaceID string
+	Role        string
+}
+
 func NewHandler(db *pgxpool.Pool, sessionTTL time.Duration) *Handler {
 	return &Handler{
 		db:         db,
@@ -76,6 +86,27 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/auth/login", h.login)
 	mux.HandleFunc("POST /api/v1/auth/logout", h.logout)
 	mux.HandleFunc("GET /api/v1/auth/me", h.me)
+}
+
+func (h *Handler) CurrentUser(r *http.Request) (CurrentUser, error) {
+	cookie, err := r.Cookie(SessionCookieName)
+	if err != nil || cookie.Value == "" {
+		return CurrentUser{}, ErrUnauthorized
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	user, err := h.userBySession(ctx, hashToken(cookie.Value))
+	if err != nil {
+		if errors.Is(err, errInvalidCredentials) {
+			return CurrentUser{}, ErrUnauthorized
+		}
+
+		return CurrentUser{}, err
+	}
+
+	return user.toCurrentUser(), nil
 }
 
 func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
@@ -283,6 +314,17 @@ func (user userRecord) toResponse() userResponse {
 			ID:   user.WorkspaceID,
 			Role: user.Role,
 		},
+	}
+}
+
+func (user userRecord) toCurrentUser() CurrentUser {
+	return CurrentUser{
+		ID:          user.ID,
+		Email:       user.Email,
+		Username:    user.Username,
+		DisplayName: user.DisplayName,
+		WorkspaceID: user.WorkspaceID,
+		Role:        user.Role,
 	}
 }
 

@@ -55,6 +55,23 @@ curl -i -b /tmp/team-task-tracker.cookies \
   -X POST http://localhost:8080/api/v1/auth/logout
 ```
 
+Projects API smoke test:
+
+```sh
+curl -i -c /tmp/team-task-tracker.cookies \
+  -H 'Content-Type: application/json' \
+  -d '{"login":"admin","password":"admin12345"}' \
+  http://localhost:8080/api/v1/auth/login
+
+curl -i -b /tmp/team-task-tracker.cookies \
+  -H 'Content-Type: application/json' \
+  -d '{"key":"CORE","name":"Core Platform","description":"Main product workspace"}' \
+  http://localhost:8080/api/v1/projects
+
+curl -b /tmp/team-task-tracker.cookies \
+  http://localhost:8080/api/v1/projects
+```
+
 Для локального запуска frontend без Docker:
 
 ```sh
