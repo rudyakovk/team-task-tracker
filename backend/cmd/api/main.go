@@ -13,6 +13,7 @@ import (
 	"team-task-tracker/backend/internal/auth"
 	"team-task-tracker/backend/internal/config"
 	"team-task-tracker/backend/internal/database"
+	"team-task-tracker/backend/internal/issues"
 	"team-task-tracker/backend/internal/projects"
 )
 
@@ -43,6 +44,9 @@ func main() {
 
 	projectsHandler := projects.NewHandler(db, authHandler)
 	projectsHandler.RegisterRoutes(mux)
+
+	issuesHandler := issues.NewHandler(db, authHandler)
+	issuesHandler.RegisterRoutes(mux)
 
 	server := &http.Server{
 		Addr:         ":" + cfg.Port,
