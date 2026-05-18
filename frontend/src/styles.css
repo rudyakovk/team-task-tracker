@@ -20,9 +20,120 @@ body {
   min-height: 100vh;
 }
 
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
 a {
   color: inherit;
   text-decoration: none;
+}
+
+.auth-shell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  background:
+    linear-gradient(135deg, rgba(24, 35, 29, 0.08), transparent 34%),
+    #eef2ea;
+}
+
+.auth-panel {
+  display: grid;
+  width: min(100%, 420px);
+  gap: 28px;
+  padding: 28px;
+  border: 1px solid #d7ded8;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgba(24, 35, 29, 0.12);
+}
+
+.auth-panel-compact {
+  justify-items: start;
+  width: max-content;
+  min-width: 220px;
+  gap: 16px;
+}
+
+.auth-brand {
+  color: #17211b;
+}
+
+.auth-brand span {
+  color: #657268;
+}
+
+.auth-form {
+  display: grid;
+  gap: 16px;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.auth-form label span {
+  color: #4e5c54;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.auth-form input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #c8d1cb;
+  border-radius: 8px;
+  color: #17211b;
+  background: #fbfcfb;
+  outline: none;
+}
+
+.auth-form input:focus {
+  border-color: #4e795d;
+  box-shadow: 0 0 0 3px rgba(78, 121, 93, 0.15);
+}
+
+.auth-form button,
+.ghost-button {
+  min-height: 40px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.auth-form button {
+  border: 1px solid #18231d;
+  color: #ffffff;
+  background: #18231d;
+}
+
+.auth-form button:hover:not(:disabled) {
+  background: #27362d;
+}
+
+.form-error {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #e1b6ae;
+  border-radius: 8px;
+  color: #923c2d;
+  background: #fff1ef;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .app-shell {
@@ -131,6 +242,24 @@ h1 {
   font-size: 13px;
   font-weight: 700;
   text-align: center;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ghost-button {
+  min-width: 88px;
+  padding: 8px 12px;
+  border: 1px solid #b8c5bd;
+  color: #28352d;
+  background: #ffffff;
+}
+
+.ghost-button:hover {
+  border-color: #6b7a70;
 }
 
 .summary-grid {
@@ -242,6 +371,7 @@ h1 {
   }
 
   .topbar,
+  .topbar-actions,
   .summary-grid,
   .board,
   .nav-list {
@@ -252,8 +382,12 @@ h1 {
     display: grid;
   }
 
+  .topbar-actions {
+    display: grid;
+    justify-items: start;
+  }
+
   .status-pill {
     width: max-content;
   }
 }
-
