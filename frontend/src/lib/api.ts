@@ -25,14 +25,50 @@ export type Project = {
   archived_at: string | null;
 };
 
+export type IssueStatus = "backlog" | "todo" | "in_progress" | "blocked" | "done";
+export type IssuePriority = "low" | "medium" | "high" | "critical";
+export type IssueType = "task" | "bug" | "story";
+
+export type Issue = {
+  id: string;
+  project_id: string;
+  project_key: string;
+  number: number;
+  issue_key: string;
+  title: string;
+  description: string;
+  issue_type: IssueType;
+  status: IssueStatus;
+  priority: IssuePriority;
+  reporter_id: string;
+  assignee_id: string | null;
+  due_date: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 type ListProjectsResponse = {
   projects: Project[];
+};
+
+type ListIssuesResponse = {
+  issues: Issue[];
 };
 
 type CreateProjectInput = {
   key: string;
   name: string;
   description: string;
+};
+
+type CreateIssueInput = {
+  project_id: string;
+  title: string;
+  description: string;
+  issue_type: IssueType;
+  status: IssueStatus;
+  priority: IssuePriority;
+  due_date: string;
 };
 
 export class ApiError extends Error {
@@ -71,6 +107,23 @@ export async function listProjects() {
 
 export async function createProject(input: CreateProjectInput) {
   return request<Project>("/api/v1/projects", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function listIssues(projectId?: string) {
+  const params = new URLSearchParams();
+  if (projectId) {
+    params.set("project_id", projectId);
+  }
+
+  const query = params.toString();
+  return request<ListIssuesResponse>(`/api/v1/issues${query ? `?${query}` : ""}`);
+}
+
+export async function createIssue(input: CreateIssueInput) {
+  return request<Issue>("/api/v1/issues", {
     method: "POST",
     body: JSON.stringify(input),
   });

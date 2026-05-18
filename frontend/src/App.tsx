@@ -3,20 +3,40 @@ import "./styles.css";
 import {
   ApiError,
   CurrentUser,
+  Issue,
+  IssuePriority,
+  IssueStatus,
+  IssueType,
   Project,
+  createIssue,
   createProject,
   getCurrentUser,
+  listIssues,
   listProjects,
   login,
   logout,
 } from "./lib/api";
 
 const columns = [
-  { title: "Backlog", count: 0 },
-  { title: "Todo", count: 0 },
-  { title: "In progress", count: 0 },
-  { title: "Done", count: 0 },
-];
+  { status: "backlog", title: "Backlog" },
+  { status: "todo", title: "Todo" },
+  { status: "in_progress", title: "In progress" },
+  { status: "blocked", title: "Blocked" },
+  { status: "done", title: "Done" },
+] satisfies Array<{ status: IssueStatus; title: string }>;
+
+const priorityLabels: Record<IssuePriority, string> = {
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+  critical: "Critical",
+};
+
+const issueTypeLabels: Record<IssueType, string> = {
+  task: "Task",
+  bug: "Bug",
+  story: "Story",
+};
 
 export function App() {
   const [user, setUser] = useState<CurrentUser | null>(null);
@@ -33,6 +53,18 @@ export function App() {
   const [projectKey, setProjectKey] = useState("");
   const [projectName, setProjectName] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [issuesError, setIssuesError] = useState("");
+  const [issueFormError, setIssueFormError] = useState("");
+  const [isLoadingIssues, setIsLoadingIssues] = useState(false);
+  const [isCreatingIssue, setIsCreatingIssue] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [issueTitle, setIssueTitle] = useState("");
+  const [issueDescription, setIssueDescription] = useState("");
+  const [issueType, setIssueType] = useState<IssueType>("task");
+  const [issuePriority, setIssuePriority] = useState<IssuePriority>("medium");
+  const [issueStatus, setIssueStatus] = useState<IssueStatus>("todo");
+  const [issueDueDate, setIssueDueDate] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -78,6 +110,12 @@ export function App() {
       .then((response) => {
         if (isMounted) {
           setProjects(response.projects);
+          setSelectedProjectId((currentProjectId) => {
+            if (currentProjectId) {
+              return currentProjectId;
+            }
+            return response.projects[0]?.id ?? "";
+          });
         }
       })
       .catch(() => {
@@ -88,6 +126,39 @@ export function App() {
       .finally(() => {
         if (isMounted) {
           setIsLoadingProjects(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      setIssues([]);
+      return;
+    }
+
+    let isMounted = true;
+    setIssuesError("");
+    setIssueFormError("");
+    setIsLoadingIssues(true);
+
+    listIssues()
+      .then((response) => {
+        if (isMounted) {
+          setIssues(response.issues);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setIssuesError("Could not load issues.");
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoadingIssues(false);
         }
       });
 
@@ -119,8 +190,11 @@ export function App() {
     await logout();
     setUser(null);
     setProjects([]);
+    setIssues([]);
     setProjectsError("");
     setProjectFormError("");
+    setIssuesError("");
+    setIssueFormError("");
   }
 
   async function handleCreateProject(event: FormEvent<HTMLFormElement>) {
@@ -135,6 +209,7 @@ export function App() {
         description: projectDescription,
       });
       setProjects((currentProjects) => [project, ...currentProjects]);
+      setSelectedProjectId(project.id);
       setProjectKey("");
       setProjectName("");
       setProjectDescription("");
@@ -148,6 +223,42 @@ export function App() {
       setIsCreatingProject(false);
     }
   }
+
+  async function handleCreateIssue(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIssueFormError("");
+    setIsCreatingIssue(true);
+
+    try {
+      const issue = await createIssue({
+        project_id: selectedProjectId,
+        title: issueTitle,
+        description: issueDescription,
+        issue_type: issueType,
+        status: issueStatus,
+        priority: issuePriority,
+        due_date: issueDueDate,
+      });
+
+      setIssues((currentIssues) => [issue, ...currentIssues]);
+      setIssueTitle("");
+      setIssueDescription("");
+      setIssueType("task");
+      setIssuePriority("medium");
+      setIssueStatus("todo");
+      setIssueDueDate("");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setIssueFormError(err.message);
+      } else {
+        setIssueFormError("Could not create issue.");
+      }
+    } finally {
+      setIsCreatingIssue(false);
+    }
+  }
+
+  const openIssuesCount = issues.filter((issue) => issue.status !== "done").length;
 
   if (isBooting) {
     return (
@@ -253,7 +364,7 @@ export function App() {
           </article>
           <article>
             <span>Open issues</span>
-            <strong>0</strong>
+            <strong>{openIssuesCount}</strong>
           </article>
           <article>
             <span>Team members</span>
@@ -342,14 +453,181 @@ export function App() {
           ) : null}
         </section>
 
+        <section className="issues-layout" aria-label="Issues">
+          <form className="issue-form" onSubmit={handleCreateIssue}>
+            <header className="section-header">
+              <div>
+                <p className="eyebrow">Issues</p>
+                <h2>Create issue</h2>
+              </div>
+            </header>
+
+            <label>
+              <span>Project</span>
+              <select
+                onChange={(event) => setSelectedProjectId(event.target.value)}
+                value={selectedProjectId}
+              >
+                <option value="">Select project</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.key} · {project.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <span>Title</span>
+              <input
+                maxLength={180}
+                onChange={(event) => setIssueTitle(event.target.value)}
+                placeholder="Create project board"
+                value={issueTitle}
+              />
+            </label>
+
+            <label>
+              <span>Description</span>
+              <textarea
+                onChange={(event) => setIssueDescription(event.target.value)}
+                placeholder="Short context for the team"
+                rows={3}
+                value={issueDescription}
+              />
+            </label>
+
+            <div className="field-grid">
+              <label>
+                <span>Type</span>
+                <select
+                  onChange={(event) => setIssueType(event.target.value as IssueType)}
+                  value={issueType}
+                >
+                  {Object.entries(issueTypeLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span>Priority</span>
+                <select
+                  onChange={(event) =>
+                    setIssuePriority(event.target.value as IssuePriority)
+                  }
+                  value={issuePriority}
+                >
+                  {Object.entries(priorityLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="field-grid">
+              <label>
+                <span>Status</span>
+                <select
+                  onChange={(event) =>
+                    setIssueStatus(event.target.value as IssueStatus)
+                  }
+                  value={issueStatus}
+                >
+                  {columns.map((column) => (
+                    <option key={column.status} value={column.status}>
+                      {column.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span>Due date</span>
+                <input
+                  onChange={(event) => setIssueDueDate(event.target.value)}
+                  type="date"
+                  value={issueDueDate}
+                />
+              </label>
+            </div>
+
+            {issueFormError ? <p className="form-error">{issueFormError}</p> : null}
+
+            <button
+              disabled={isCreatingIssue || projects.length === 0}
+              type="submit"
+            >
+              {isCreatingIssue ? "Creating..." : "Create issue"}
+            </button>
+          </form>
+
+          <div className="issues-panel">
+            <header className="section-header">
+              <div>
+                <p className="eyebrow">Open work</p>
+                <h2>Recent issues</h2>
+              </div>
+              {isLoadingIssues ? <span className="muted">Loading</span> : null}
+            </header>
+
+            {issuesError ? <p className="form-error">{issuesError}</p> : null}
+
+            {issues.length > 0 ? (
+              <div className="issue-list">
+                {issues.slice(0, 6).map((issue) => (
+                  <article className="issue-row" key={issue.id}>
+                    <span className="issue-key">{issue.issue_key}</span>
+                    <div>
+                      <h3>{issue.title}</h3>
+                      <p>
+                        {issueTypeLabels[issue.issue_type]} ·{" "}
+                        {priorityLabels[issue.priority]} ·{" "}
+                        {columns.find((column) => column.status === issue.status)
+                          ?.title ?? issue.status}
+                      </p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="project-empty">No issues yet</div>
+            )}
+          </div>
+        </section>
+
         <section className="board" aria-label="Task board preview">
           {columns.map((column) => (
             <article className="board-column" key={column.title}>
               <header>
                 <h2>{column.title}</h2>
-                <span>{column.count}</span>
+                <span>
+                  {issues.filter((issue) => issue.status === column.status).length}
+                </span>
               </header>
-              <div className="empty-state">No issues yet</div>
+              <div className="board-card-list">
+                {issues
+                  .filter((issue) => issue.status === column.status)
+                  .map((issue) => (
+                    <article className="issue-card" key={issue.id}>
+                      <div className="issue-card-meta">
+                        <span>{issue.issue_key}</span>
+                        <span>{priorityLabels[issue.priority]}</span>
+                      </div>
+                      <h3>{issue.title}</h3>
+                      {issue.due_date ? <p>Due {issue.due_date}</p> : null}
+                    </article>
+                  ))}
+
+                {issues.filter((issue) => issue.status === column.status).length ===
+                0 ? (
+                  <div className="empty-state">No issues yet</div>
+                ) : null}
+              </div>
             </article>
           ))}
         </section>
